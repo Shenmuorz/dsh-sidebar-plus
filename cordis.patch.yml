@@ -1,0 +1,4 @@
+- insert:
+    - id: sidebar-plus
+      name: '@local/sidebar-plus'
+      config: {}

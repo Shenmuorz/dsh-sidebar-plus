@@ -1,0 +1,49 @@
+{
+  "name": "@local/sidebar-plus",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-workspace",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  },
+  "description": "三区式 DeepSeek Harness Web 侧边栏：功能区 / 工作区 / 回收区，液态玻璃皮肤，支持拖拽排序与回收站恢复。",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "sidebar",
+    "liquid-glass",
+    "recycle-bin"
+  ],
+  "license": "MIT",
+  "author": "Orz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_NAME/dsh-sidebar-plus.git"
+  }
+}
