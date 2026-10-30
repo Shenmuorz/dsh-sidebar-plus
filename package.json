@@ -16,6 +16,9 @@
     "locale/*.json",
     "icon.svg",
     "README.md",
+    "README.en.md",
+    "DESIGN.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "dsh": {
