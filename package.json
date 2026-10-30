@@ -44,9 +44,16 @@
     "recycle-bin"
   ],
   "license": "MIT",
-  "author": "Orz",
+  "author": {
+    "name": "Shenmuorz",
+    "url": "https://github.com/Shenmuorz"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_NAME/dsh-sidebar-plus.git"
+    "url": "https://github.com/Shenmuorz/dsh-sidebar-plus.git"
+  },
+  "homepage": "https://github.com/Shenmuorz/dsh-sidebar-plus#readme",
+  "bugs": {
+    "url": "https://github.com/Shenmuorz/dsh-sidebar-plus/issues"
   }
 }
