@@ -28,6 +28,13 @@ Sessions that are actually running are refused, with a message.
 
 The `⌕` button in the Workspaces header filters sessions by title across all workspaces. `Esc` closes.
 
+
+### Dark theme
+
+The same rules hold in dark mode: the canvas switches through a `@media (prefers-color-scheme: dark)` gradient, while surfaces still derive their tint from host tokens via `color-mix()`, so contrast and hierarchy stay intact.
+
+![Dark theme](docs/screenshots/dark.jpg)
+
 ## Design
 
 A small, executable spec rather than taste: glass surfaces tinted with `color-mix()` from the host's `--dsw-alias-*` tokens, one accent colour reserved for state, borders instead of boxes, and a spring-ish grid transition for expanding groups. Details in [DESIGN.md](DESIGN.md).

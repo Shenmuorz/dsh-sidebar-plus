@@ -3,6 +3,8 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const h = React.createElement
+    const isTouchDevice = (typeof window !== 'undefined') && (('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0)
+    let rowTouch = null
     let createPortal = null
     try {
       const reactDom = require('react-dom')
@@ -41,6 +43,16 @@ window.__ModuleLoader__.load({
           'border:1px solid color-mix(in srgb, var(--dsw-alias-border-l2) 45%, transparent) !important}' +
         '[data-sp-collapse]{opacity:.55;transition:opacity .18s ease}' +
         '[data-sp-collapse]:hover,[class*="_sidebarCol"]:hover [data-sp-collapse]{opacity:1}' +
+        '@media (prefers-color-scheme: dark){' +
+          '[class*="_frame"]{background:' +
+            'radial-gradient(50% 40% at 4% 0%, rgba(96,132,255,.26), transparent 60%),' +
+            'radial-gradient(44% 36% at 100% 10%, rgba(255,120,180,.15), transparent 62%),' +
+            'radial-gradient(50% 42% at 84% 100%, rgba(64,205,175,.15), transparent 64%),' +
+            'linear-gradient(160deg,#0d1016 0%,#12161d 52%,#171320 100%) !important;' +
+            'background-attachment:fixed !important}' +
+          '[role="dialog"],[aria-modal="true"]{background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 84%, transparent) !important}' +
+          '[class*="_sidebarCol"]{border-right-color:color-mix(in srgb, var(--dsw-alias-border-l2) 55%, transparent) !important}' +
+        '}' +
         '[class*="_sidebarCol"]{border-right:1px solid color-mix(in srgb, var(--dsw-alias-border-l2) 35%, transparent) !important}'      ].join('\n')
 
     const store = {
@@ -158,6 +170,57 @@ window.__ModuleLoader__.load({
 
         const allExpanded = items.length > 0 && items.every((w) => expanded.includes(w.workspaceId))
         const toggle = (id) => setExpanded((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : prev.concat(id))
+        // 选完会话后的 1.2 秒内，临时禁止输入框获得焦点：键盘就不会"弹出又收回"
+        const suppressComposerFocus = () => {
+          const inputs = [...document.querySelectorAll('textarea, input, [contenteditable="true"]')]
+          for (const el of inputs) {
+            if (!el.hasAttribute('readonly')) {
+              el.setAttribute('readonly', 'readonly')
+              el.dataset.spRo = '1'
+            }
+          }
+          const onFocus = (event) => {
+            const el = event.target
+            if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable)) {
+              try { el.blur() } catch { /* ignore */ }
+            }
+          }
+          document.addEventListener('focusin', onFocus, true)
+          setTimeout(() => {
+            document.removeEventListener('focusin', onFocus, true)
+            for (const el of inputs) {
+              if (el.dataset && el.dataset.spRo) {
+                el.removeAttribute('readonly')
+                delete el.dataset.spRo
+              }
+            }
+          }, 1200)
+        }
+
+        let lastPickAt = 0
+        const closeSidebarAfterPick = () => {
+          // iOS 会同时派发 touchend 和 pointerup，避免“收起又弹出”的双触发
+          const now = Date.now()
+          if (now - lastPickAt < 800) return
+          lastPickAt = now
+          suppressComposerFocus()
+          setTimeout(() => {
+            const sb = document.querySelector('[class*="_sidebarCol"]')
+            const w = sb ? sb.getBoundingClientRect().width : 0
+            if (w > 96) {
+              const btn = document.querySelector('button[aria-label="收起侧边栏"]')
+              if (btn) btn.click()
+              else { try { ctx.layout.toggleSidebar() } catch { /* ignore */ } }
+            }
+            const el = document.activeElement
+            if (el && typeof el.blur === 'function') el.blur()
+          }, 350)
+          setTimeout(() => {
+            const el = document.activeElement
+            if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable)) el.blur()
+          }, 900)
+        }
+
         const openSession = (id) => { try { ctx.uiWorkspace.openSession(id) } catch (error) { console.error('[sidebar-plus] openSession', error) } }
 
         const archive = async (id) => {
@@ -265,7 +328,23 @@ window.__ModuleLoader__.load({
           const hovered = hoverId === id
           return h('div', {
             key: id,
-            draggable: true,
+            draggable: !isTouchDevice,
+            onTouchStart: (event) => {
+              const t = event.touches[0]
+              rowTouch = t ? { x: t.clientX, y: t.clientY, at: Date.now() } : null
+            },
+            onTouchEnd: (event) => {
+              if (!rowTouch) return
+              const t = event.changedTouches[0]
+              const dx = t ? Math.abs(t.clientX - rowTouch.x) : 99
+              const dy = t ? Math.abs(t.clientY - rowTouch.y) : 99
+              const dt = Date.now() - rowTouch.at
+              rowTouch = null
+              if (dx < 10 && dy < 10 && dt < 600) {
+                openSession(id)
+                closeSidebarAfterPick()
+              }
+            },
             onDragStart: (event) => {
               event.dataTransfer.effectAllowed = 'move'
               event.dataTransfer.setData('text/plain', id)
@@ -292,8 +371,15 @@ window.__ModuleLoader__.load({
               await reorder(workspaceId, moved, beforeId)
             },
             onClick: () => openSession(id),
-            onMouseEnter: () => setHoverId(id),
-            onMouseLeave: () => setHoverId((cur) => (cur === id ? null : cur)),
+            onPointerUp: (event) => {
+              if (event.pointerType !== 'touch') return
+              openSession(id)
+              closeSidebarAfterPick()
+            },
+            // iOS Safari 会把"带 mouseenter 的元素"的第一次点击当成 hover，
+            // 导致要双击才能触发 onClick；触屏上干脆不挂 hover 处理。
+            onMouseEnter: isTouchDevice ? undefined : () => setHoverId(id),
+            onMouseLeave: isTouchDevice ? undefined : () => setHoverId((cur) => (cur === id ? null : cur)),
             style: {
               position: 'relative', display: 'flex', alignItems: 'center', gap: 7,
               minHeight: 29, padding: '3px 22px 3px 8px', borderRadius: 7, cursor: 'pointer',
@@ -753,6 +839,75 @@ window.__ModuleLoader__.load({
           document.head.appendChild(style)
           ctx.effect(() => () => style.remove())
         } catch { /* ignore */ }
+        // 手机端键盘自适应（原独立插件 @local/mobile-fix 合并到这里，避免额外插件加载失败）
+        try {
+          const isMobileKb = () => window.innerWidth <= 900 || /iPhone|iPad|Android/i.test(navigator.userAgent)
+          if (isMobileKb()) {
+            const kbStyle = document.createElement('style')
+            kbStyle.setAttribute('data-mobile-kb', '1')
+            kbStyle.textContent = [
+              'input, textarea, [contenteditable="true"]{font-size:16px !important}',
+              'html[data-mf-kb="1"] #root{height:var(--mf-vh) !important;max-height:var(--mf-vh) !important;overflow:hidden !important}',
+              'html[data-mf-kb="1"] body{overflow:hidden !important}',
+            ].join(String.fromCharCode(10))
+            document.head.appendChild(kbStyle)
+            ctx.effect(() => () => kbStyle.remove())
+
+            const seatEl = () => document.querySelector('[class*="_composerSeat"]')
+            let lastKbTransform = ''
+            const applyKeyboard = () => {
+              const vv = window.visualViewport
+              const root = document.documentElement
+              if (!vv) return
+              const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+              if (kb > 30) {
+                root.style.setProperty('--mf-vh', vv.height + 'px')
+                root.dataset.mfKb = '1'
+                const s = seatEl()
+                if (s) {
+                  const r = s.getBoundingClientRect()
+                  const need = Math.max(0, Math.round(r.bottom - (vv.height - 8)))
+                  const tr = need > 0 ? 'translateY(' + -need + 'px)' : ''
+                  if (tr !== lastKbTransform) { s.style.transform = tr; lastKbTransform = tr }
+                }
+              } else {
+                root.style.removeProperty('--mf-vh')
+                delete root.dataset.mfKb
+                const s = seatEl()
+                if (s) s.style.transform = ''
+                lastKbTransform = ''
+              }
+            }
+            let kbRaf = 0
+            const kbSchedule = () => {
+              if (kbRaf) return
+              kbRaf = requestAnimationFrame(() => { kbRaf = 0; applyKeyboard() })
+            }
+            const vv = window.visualViewport
+            if (vv) {
+              vv.addEventListener('resize', kbSchedule)
+              vv.addEventListener('scroll', kbSchedule)
+            }
+            document.addEventListener('focusin', kbSchedule, true)
+            document.addEventListener('focusout', kbSchedule, true)
+            window.addEventListener('orientationchange', kbSchedule)
+            applyKeyboard()
+            ctx.effect(() => () => {
+              if (vv) {
+                vv.removeEventListener('resize', kbSchedule)
+                vv.removeEventListener('scroll', kbSchedule)
+              }
+              document.removeEventListener('focusin', kbSchedule, true)
+              document.removeEventListener('focusout', kbSchedule, true)
+              window.removeEventListener('orientationchange', kbSchedule)
+              const s = seatEl()
+              if (s) s.style.transform = ''
+              document.documentElement.style.removeProperty('--mf-vh')
+              delete document.documentElement.dataset.mfKb
+            })
+          }
+        } catch { /* ignore */ }
+
         const Browser = createBrowser(ctx)
         const SafeBrowser = (props) => h(Boundary, null, h(Browser, props))
 

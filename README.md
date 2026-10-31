@@ -49,6 +49,13 @@ DSH 默认侧边栏把「插件 / 自动化任务 / 上下文洞察」放在最�
 
 ![收起态](docs/screenshots/collapsed.jpg)
 
+
+### 深色主题
+
+同一套规则在深色下不需要另写一套：画布在 `@media (prefers-color-scheme: dark)` 里换成深色渐变，面板底色仍由 `color-mix()` 从宿主 token 派生，因此文字对比度和层级关系保持一致。
+
+![深色主题](docs/screenshots/dark.jpg)
+
 ## 设计语言
 
 一套可执行的规则，不是"看着调"：

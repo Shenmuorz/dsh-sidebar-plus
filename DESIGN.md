@@ -15,6 +15,7 @@
 
 | 角色 | 取值 | 用途 |
 |---|---|---|
+| 画布（深色） | `@media (prefers-color-scheme: dark)` 下换成 `linear-gradient(160deg,#0d1016,#12161d,#171320)`，并叠同三色但更暗的光晕 | 整窗底色（深色） |
 | 画布 | `radial-gradient` ×3（蓝 `rgba(111,156,255,.42)` / 粉 `rgba(255,158,196,.34)` / 青 `rgba(99,224,200,.32)`）+ `linear-gradient(160deg,#f3f6fd,#eef1f9,#f5eef9)` | 整窗底色，`background-attachment: fixed` |
 | 面板 | `color-mix(in srgb, var(--dsw-alias-bg-layer-1) 58%, transparent)` | 侧边栏面板、对话框 |
 | 面板浮层 | 同上 62% | 收起/展开长条 |
